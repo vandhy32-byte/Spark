@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>???</title>
+<style>
+body{
+  margin:0;
+  overflow:hidden;
+  background:black;
+  font-family:Arial, sans-serif;
+}
+canvas{
+  display:block;
+}
+#ui{
+  position:absolute;
+  top:20px;
+  left:20px;
+  color:white;
+  user-select:none;
+  font-size:18px;
+  letter-spacing:2px;
+}
+#hint{
+  position:absolute;
+  bottom:20px;
+  width:100%;
+  text-align:center;
+  color:#aaa;
+  font-size:14px;
+}
+</style>
+</head>
+<body>
+<div id="ui">...</div>
+<div id="hint">click • drag • press keys</div>
+<canvas id="c"></canvas>
+
+<script>
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+let w,h;
+function resize(){
+  w = canvas.width = window.innerWidth;
+  h = canvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resize);
+resize();
+
+let particles = [];
+let mouse = {x:w/2,y:h/2,down:false};
+let mode = 0;
+let energy = 0;
+
+class Particle{
+  constructor(x,y){
+    this.x=x;
+    this.y=y;
+    this.vx=(Math.random()-0.5)*6;
+    this.vy=(Math.random()-0.5)*6;
+    this.life=100+Math.random()*200;
+    this.size=2+Math.random()*4;
+    this.hue=Math.random()*360;
+  }
+  update(){
+    this.life--;
+    this.vx*=0.99;
+    this.vy*=0.99;
+    this.x+=this.vx;
+    this.y+=this.vy;
+
+    let dx=mouse.x-this.x;
+    let dy=mouse.y-this.y;
+    let d=Math.sqrt(dx*dx+dy*dy)+0.1;
+
+    if(mouse.down){
+      this.vx+=dx/d*0.3;
+      this.vy+=dy/d*0.3;
+    }else{
+      this.vx-=dx/d*0.02;
+      this.vy-=dy/d*0.02;
+    }
+
+    if(this.life<0){
+      this.x=Math.random()*w;
+      this.y=Math.random()*h;
+      this.life=200+Math.random()*200;
+    }
+  }
+  draw(){
+    ctx.beginPath();
+    ctx.fillStyle=`hsla(${(this.hue+energy)%360},100%,60%,0.8)`;
+    ctx.arc(this.x,this.y,this.size,0,Math.PI*2);
+    ctx.fill();
+  }
+}
+
+for(let i=0;i<600;i++){
+  particles.push(new Particle(Math.random()*w,Math.random()*h));
+}
+
+window.addEventListener("mousemove",e=>{
+  mouse.x=e.clientX;
+  mouse.y=e.clientY;
+});
+
+window.addEventListener("mousedown",()=>mouse.down=true);
+window.addEventListener("mouseup",()=>mouse.down=false);
+
+window.addEventListener("keydown",e=>{
+  mode=(mode+1)%4;
+  energy+=50;
+});
+
+function drawBackground(){
+  if(mode===0){
+    ctx.fillStyle="rgba(0,0,0,0.15)";
+  }else if(mode===1){
+    ctx.fillStyle="rgba(10,0,20,0.2)";
+  }else if(mode===2){
+    ctx.fillStyle="rgba(0,20,10,0.2)";
+  }else{
+    ctx.fillStyle="rgba(20,0,0,0.2)";
+  }
+  ctx.fillRect(0,0,w,h);
+}
+
+function connect(){
+  for(let i=0;i<particles.length;i+=4){
+    for(let j=i+1;j<particles.length;j+=12){
+      let a=particles[i], b=particles[j];
+      let dx=a.x-b.x;
+      let dy=a.y-b.y;
+      let d=dx*dx+dy*dy;
+      if(d<12000){
+        ctx.strokeStyle=`hsla(${(energy+i)%360},100%,70%,0.08)`;
+        ctx.beginPath();
+        ctx.moveTo(a.x,a.y);
+        ctx.lineTo(b.x,b.y);
+        ctx.stroke();
+      }
+    }
+  }
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  drawBackground();
+
+  energy*=0.98;
+
+  connect();
+
+  for(let p of particles){
+    p.update();
+    p.draw();
+  }
+
+  document.getElementById("ui").textContent =
+    ["drift","awake","phase","collapse"][mode];
+}
+animate();
+</script>
+</body>
+</html>
